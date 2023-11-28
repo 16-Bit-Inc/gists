@@ -1,0 +1,173 @@
+#!/bin/bash
+set -e
+
+log_path="/tmp/rho-install.log"
+
+exec 3>&1
+exec >>"$log_path" 2>&1
+
+echo_to_console() {
+    echo "$@" | tee -a "$log_path" >&3
+}
+
+echo_to_console ">>>> Starting Rho installation"
+echo_to_console ">>>> Logging Rho installation at $log_path"
+
+if [ -z "$RHO_CUSTOMER_NAME" ]; then
+    echo_to_console ">>>> Environment variable RHO_CUSTOMER_NAME not set, exiting installation" 
+    exit 1
+fi
+
+if [ -z "$RHO_GHCR_KEY" ]; then
+    echo_to_console ">>>> Environment variable RHO_GHCR_KEY not set, exiting installation" 
+    exit 1
+fi
+
+if [ -f /usr/local/bin/k3s-uninstall.sh ]; then
+    echo_to_console ">>>> k3s is already installed" 
+else
+  echo_to_console ">>>> Installing k3s" 
+  curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.27.3+k3s1 sh -s - \
+    --write-kubeconfig ~/.kube/config \
+    --write-kubeconfig-mode 600 \
+    --kubelet-arg=image-gc-high-threshold=50 \
+    --kubelet-arg=image-gc-low-threshold=30
+  sudo chown -R $USER:$USER ~/.kube
+  echo 'alias k=kubectl' >> ~/.bashrc
+  source ~/.bashrc
+  sleep 5
+  sudo sh -c 'echo "apiVersion: helm.cattle.io/v1
+  kind: HelmChartConfig
+  metadata:
+    name: traefik
+    namespace: kube-system
+  spec:
+    valuesContent: |-
+      providers:
+        kubernetesCRD:
+          allowCrossNamespace: true
+      ports:
+        dicom:
+          port: 4242
+          expose: true
+          exposedPort: 4242
+          protocol: TCP
+        db:
+          port: 5432
+          expose: true
+          exposedPort: 5432
+          protocol: TCP" > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml'
+fi
+
+if which brew; then
+    echo_to_console ">>>> Homebrew is already installed" 
+else
+	echo_to_console ">>>> Installing homebrew" 
+	echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	(echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> ~/.bashrc
+	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
+set +e
+
+if which kubens; then
+  echo_to_console ">>>> kubectx is already installed" 
+else
+  echo_to_console ">>>> Installing kubectx" 
+  brew install kubectx
+fi
+
+if which argocd; then
+  echo_to_console ">>>> ArgoCD cli is already installed" 
+else
+  echo_to_console ">>>> Installing ArgoCD cli" 
+  brew install argocd
+fi
+
+if which helm; then
+  echo_to_console ">>>> helm is already installed" 
+else
+  echo_to_console ">>>> Installing helm" 
+  brew install helm
+fi
+
+set -e
+
+if helm ls --short | grep -q "argocd"; then
+  echo_to_console ">>>> ArgoCD agent is already installed" 
+else
+  echo_to_console ">>>> Installing ArgoCD agent" 
+  helm repo add argo https://argoproj.github.io/argo-helm
+  helm repo update
+  helm install argocd --namespace argocd --create-namespace --version 5.46.8 argo/argo-cd
+fi
+
+echo_to_console ">>>> Setting up ArgoCD CLI" 
+argocd login --core
+kubens argocd
+
+if [ -f ~/.ssh/argocd ]; then
+  echo_to_console ">>>> ArgoCD SSH key already exists" 
+else
+  echo_to_console ">>>> Generating ArgoCD SSH key" 
+  ssh-keygen -f ~/.ssh/argocd -N ""
+fi
+
+echo_to_console ">>>> Add the following public SSH key to rho-customer-$RHO_CUSTOMER_NAME GitHub repo's deploy keys:" 
+echo_to_console
+echo_to_console $(cat ~/.ssh/argocd.pub) 
+echo_to_console 
+echo_to_console ">>>> Once done, press enter to continue" 
+read
+
+if argocd repo list -o url | grep -q "git@github.com:16-Bit-Inc/rho-customer-$RHO_CUSTOMER_NAME.git"; then
+  echo_to_console ">>>> rho-customer-config repo already exists in ArgoCD" 
+else
+	echo_to_console ">>>> Adding rho-customer-config repo to ArgoCD" 
+	argocd repo add git@github.com:16-Bit-Inc/rho-customer-$RHO_CUSTOMER_NAME.git --name rho-customer-config --ssh-private-key-path ~/.ssh/argocd
+fi
+
+if argocd repo list -o url | grep -q "ghcr.io/16-bit-inc/helm"; then
+  echo_to_console ">>>> 16Bit Helm repo already exists in ArgoCD" 
+else
+	echo_to_console ">>>> Adding 16Bit Helm repo to ArgoCD" 
+	argocd repo add "ghcr.io/16-bit-inc/helm" --type helm --name 16bit-helm --enable-oci --username "automation" --password $RHO_GHCR_KEY
+fi
+
+if argocd app list -o name | grep -q "argocd/$RHO_CUSTOMER_NAME"; then
+  echo_to_console ">>>> ArgoCD application already exists" 
+else
+echo_to_console ">>>> Creating ArgoCD application" 
+cat > /tmp/rho.yaml <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: $RHO_CUSTOMER_NAME
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    name: ''
+    namespace: argocd
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: ./
+    repoURL: git@github.com:16-Bit-Inc/rho-customer-$RHO_CUSTOMER_NAME.git
+    targetRevision: HEAD
+  sources: []
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+EOF
+  kubectl apply -f /tmp/rho.yaml
+fi
+
+echo_to_console ">>>> Rho installation complete!"
+echo_to_console
+echo_to_console ">>>> Note: Please source the bashrc file: source ~/.bashrc" 
+echo_to_console ">>>> Note: Rho could take up to 10 more minutes to fully install (all the pods to become ready)." 
