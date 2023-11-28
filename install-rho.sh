@@ -113,6 +113,7 @@ else
   ssh-keygen -f ~/.ssh/argocd -N ""
 fi
 
+echo_to_console
 echo_to_console ">>>> Add the following public SSH key to rho-customer-$RHO_CUSTOMER_NAME GitHub repo's deploy keys:" 
 echo_to_console
 echo_to_console $(cat ~/.ssh/argocd.pub) 
