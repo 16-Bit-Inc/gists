@@ -4,6 +4,21 @@ param (
     [string]$ghcr_key
 )
 
+if (-not $ip) {
+    Write-Host "ip is required. Please provide a value for ip." -ForegroundColor Red
+    exit 1
+}
+
+if (-not $customer_name) {
+    Write-Host "customer_name is required. Please provide a value for customer_name." -ForegroundColor Red
+    exit 1
+}
+
+if (-not $ghcr_key) {
+    Write-Host "ghcr_key is required. Please provide a value for ghcr_key." -ForegroundColor Red
+    exit 1
+}
+
 $binaryName = "choco"
 
 # Attempt to get the full path of the binary
@@ -11,7 +26,7 @@ $binaryPath = Get-Command $binaryName -ErrorAction SilentlyContinue
 
 if (-not $binaryPath) {
     Write-Host "Binary '$binaryName' not found. Exiting the script." -ForegroundColor Red
-    exit 
+    exit 1
 }
 
 $binaryName = "kubens"
@@ -21,7 +36,7 @@ $binaryPath = Get-Command $binaryName -ErrorAction SilentlyContinue
 
 if (-not $binaryPath) {
     Write-Host "Binary '$binaryName' not found. Exiting the script." -ForegroundColor Red
-    exit 
+    exit 1
 }
 
 $binaryName = "kubectl"
@@ -31,7 +46,7 @@ $binaryPath = Get-Command $binaryName -ErrorAction SilentlyContinue
 
 if (-not $binaryPath) {
     Write-Host "Binary '$binaryName' not found. Exiting the script." -ForegroundColor Red
-    exit 
+    exit 1
 }
 
 $binaryName = "helm"
@@ -41,7 +56,7 @@ $binaryPath = Get-Command $binaryName -ErrorAction SilentlyContinue
 
 if (-not $binaryPath) {
     Write-Host "Binary '$binaryName' not found. Exiting the script." -ForegroundColor Red
-    exit 
+    exit 1
 }
 
 $binaryName = "argocd"
@@ -51,10 +66,23 @@ $binaryPath = Get-Command $binaryName -ErrorAction SilentlyContinue
 
 if (-not $binaryPath) {
     Write-Host "Binary '$binaryName' not found. Exiting the script." -ForegroundColor Red
-    exit 
+    exit 1
 }
 
-Write-Host "All the binaries are present. Continuing with the installation." -ForegroundColor Blue
+Write-Host "All the binaries are present. Continuing with the installation." -ForegroundColor Cyan
+
+while ($true) {
+    kubectl get nodes
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Docker Desktop is running. Proceeding the installation script." -ForegroundColor Cyan
+        break
+    } else {
+        Write-Host "Docker Desktop is not running. Please start Docker Desktop." -ForegroundColor Red
+        Write-Host 
+        Read-Host "Press Enter once docker desktop is running."
+    }
+}
 
 $Content = @'
 apiVersion: v1
@@ -221,19 +249,25 @@ data:
 $TempFilePath = "local-storage.yaml"
 Set-Content -Path $TempFilePath -Value $Content
 
-Write-Host "Local storage yaml file created at: $TempFilePath" -ForegroundColor Blue
+Write-Host "Local storage yaml file created at: $TempFilePath" -ForegroundColor Cyan
 
-Write-Host "Applying local storage provisioner" -ForegroundColor Blue
+Write-Host "Applying local storage provisioner" -ForegroundColor Cyan
 kubectl apply -f .\$TempFilePath
 
-Write-Host "Installing metallb service load balancer" -ForegroundColor Blue
-helm repo add metallb https://metallb.github.io/metallb
-helm repo update
-helm -n metallb install metallb metallb/metallb --version 0.13.11 --create-namespace
+# Check if the Helm chart is installed
+$helmChartExists = helm ls --short --all-namespaces | Select-String "metallb"
 
-Start-Sleep -Seconds 15
+if ($helmChartExists) {
+    Write-Host "Metallb helm chart is already installed" -ForegroundColor Cyan
+} else {
+    Write-Host "Installing metallb service load balancer" -ForegroundColor Cyan
+    helm repo add metallb https://metallb.github.io/metallb
+    helm repo update
+    helm -n metallb install metallb metallb/metallb --version 0.13.11 --create-namespace
+    Start-Sleep -Seconds 15
+}
 
-Write-Host "Private IP: $ip" -ForegroundColor Blue
+Write-Host "Private IP: $ip" -ForegroundColor Cyan
 
 $Content = @"
 ---
@@ -260,8 +294,8 @@ spec:
 $TempFilePath = "metallb-config.yaml"
 Set-Content -Path $TempFilePath -Value $Content
 
-Write-Host "Metallb config yaml file created at: $TempFilePath" -ForegroundColor Blue
-Write-Host "Applying metallb configuration" -ForegroundColor Blue
+Write-Host "Metallb config yaml file created at: $TempFilePath" -ForegroundColor Cyan
+Write-Host "Applying metallb configuration" -ForegroundColor Cyan
 kubectl apply -f .\$TempFilePath
 
 $TempFilePath = "traefik-values.yaml"
@@ -285,43 +319,70 @@ ports:
 
 Set-Content -Path $TempFilePath -Value $Content
 
-Write-Host "Traefik values yaml file created at: $TempFilePath" -ForegroundColor Blue
+Write-Host "Traefik values yaml file created at: $TempFilePath" -ForegroundColor Cyan
 
-Write-Host "Installing traefik" -ForegroundColor Blue
-helm repo add traefik https://traefik.github.io/charts
-helm repo update
-helm -n kube-system install traefik traefik/traefik --version 24.0.0 -f $TempFilePath
+$helmChartExists = helm ls --short --all-namespaces | Select-String "traefik"
 
-Start-Sleep -Seconds 15
+if ($helmChartExists) {
+    Write-Host "Traefik helm chart is already installed" -ForegroundColor Cyan
+} else {
+    Write-Host "Installing traefik" -ForegroundColor Cyan
+    helm repo add traefik https://traefik.github.io/charts
+    helm repo update
+    helm -n kube-system install traefik traefik/traefik --version 24.0.0 -f $TempFilePath
+    Start-Sleep -Seconds 15
+}
 
-Write-Host "Installing argocd" -ForegroundColor Blue
-helm repo add argo https://argoproj.github.io/argo-helm
-helm repo update
-helm install argocd --namespace argocd --create-namespace --version 5.46.8 argo/argo-cd
+$helmChartExists = helm ls --short --all-namespaces | Select-String "argocd"
 
-Start-Sleep -Seconds 15
+if ($helmChartExists) {
+    Write-Host "ArgoCD helm chart is already installed" -ForegroundColor Cyan
+} else {
+    Write-Host "Installing argocd" -ForegroundColor Cyan
+    helm repo add argo https://argoproj.github.io/argo-helm
+    helm repo update
+    helm install argocd --namespace argocd --create-namespace --version 5.46.8 argo/argo-cd
+    Start-Sleep -Seconds 15
+}
 
-Write-Host "Setting up argocd CLI" -ForegroundColor Blue
+Write-Host "Setting up argocd CLI" -ForegroundColor Cyan
 argocd login --core
 kubens argocd
 
-Write-Host "Generating SSH Key" -ForegroundColor Blue
-ssh-keygen -f argocd -N " "
+$sshKeyPath = ".\argocd"
 
-Write-Host "Add the following key to the list of deploy keys for rho-customer-$customer_name repo in GitHub" -ForegroundColor Blue
+if (Test-Path -Path $sshKeyPath -PathType Leaf) {
+    Write-Host "ArgoCD SSH key already exists" -BackgroundColor Cyan
+} else {
+    Write-Host "Generating SSH Key" -ForegroundColor Cyan
+    ssh-keygen -f argocd -N " "
+}
+
+
+Write-Host "Add the following key to the list of deploy keys for rho-customer-$customer_name repo in GitHub" -ForegroundColor Cyan
 Write-Host
 Get-Content .\argocd.pub
 Write-Host
 
 Read-Host "Press enter once you are done"
 
-Write-Host "Adding customer repo to ArgoCD" -ForegroundColor Blue
-argocd repo add "git@github.com:16-Bit-Inc/rho-customer-$customer_name.git" --name rho-customer-config --ssh-private-key-path .\argocd
+# Check if the rho-customer-config repo exists in ArgoCD
+if ((argocd repo list -o url) -match "git@github.com:16-Bit-Inc/rho-customer-$customer_name.git") {
+    Write-Host "rho-customer-config repo already exists in ArgoCD" -ForegroundColor Cyan
+} else {
+    Write-Host "Adding rho-customer-config repo to ArgoCD" -ForegroundColor Cyan
+    argocd repo add "git@github.com:16-Bit-Inc/rho-customer-$customer_name.git" --name rho-customer-config --ssh-private-key-path .\argocd
+}
 
-Write-Host "Adding 16Bit Helm Repo to ArgoCD" -ForegroundColor Blue
-argocd repo add "ghcr.io/16-bit-inc/helm" --type helm --name 16bit-helm --enable-oci --username "automation" --password "$ghcr_key"
+# Check if the 16Bit Helm repo exists in ArgoCD
+if ((argocd repo list -o url) -match "ghcr.io/16-bit-inc/helm") {
+    Write-Host "16Bit Helm repo already exists in ArgoCD" -ForegroundColor Cyan
+} else {
+    Write-Host "Adding 16Bit Helm repo to ArgoCD" -ForegroundColor Cyan
+    argocd repo add "ghcr.io/16-bit-inc/helm" --type helm --name 16bit-helm --enable-oci --username "automation" --password "$ghcr_key"
+}
 
-Write-Host "Creating the ArgoCD application" -ForegroundColor Blue
+Write-Host "Creating the ArgoCD application" -ForegroundColor Cyan
 
 $Content = @"
 apiVersion: argoproj.io/v1alpha1
@@ -352,8 +413,10 @@ spec:
 
 $TempFilePath = "argocd-application.yaml"
 Set-Content -Path $TempFilePath -Value $Content
-Write-Host "ArgoCD application created at: $TempFilePath" -ForegroundColor Blue
+Write-Host "ArgoCD application created at: $TempFilePath" -ForegroundColor Cyan
 
 kubectl apply -f .\$TempFilePath
 
-Write-Host "Note: Rho could take up to 10 more minutes to fully install (all the pods to become ready)" -ForegroundColor Blue
+Write-Host "Rho installation complete!" -ForegroundColor Green
+Write-Host
+Write-Host "Note: Rho could take up to 10 more minutes to fully install (all the pods to become ready)." -ForegroundColor Yellow
