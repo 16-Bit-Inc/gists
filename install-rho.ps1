@@ -370,7 +370,7 @@ if (Test-Path -Path $sshKeyPath -PathType Leaf) {
     Write-Host "ArgoCD SSH key already exists" -BackgroundColor Cyan
 } else {
     Write-Host "Generating SSH Key" -ForegroundColor Cyan
-    ssh-keygen -f argocd
+    ssh-keygen -f argocd -N '""'
 }
 
 
