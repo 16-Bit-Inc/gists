@@ -84,6 +84,21 @@ while ($true) {
     }
 }
 
+kubectl -n rho get secret "ghcr-login-secret"
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "GHCR Login Secret already exists" -ForegroundColor Cyan
+    break
+} else {
+    Write-Host "Creating GHCR Login Secret" -ForegroundColor Red
+    kubectl create ns rho
+    kubectl -n rho create secret docker-registry ghcr-login-secret `
+    --docker-server=https://ghcr.io `
+    --docker-username=automation `
+    --docker-password=$env:RHO_GHCR_KEY `
+    --docker-email=automation@16bit.ai
+}
+
 $Content = @'
 apiVersion: v1
 kind: ServiceAccount
