@@ -95,7 +95,7 @@ if ($LASTEXITCODE -eq 0) {
     kubectl -n rho create secret docker-registry ghcr-login-secret `
     --docker-server=https://ghcr.io `
     --docker-username=automation `
-    --docker-password=$env:RHO_GHCR_KEY `
+    --docker-password=$ghcr_key `
     --docker-email=automation@16bit.ai
 }
 
