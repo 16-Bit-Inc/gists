@@ -59,6 +59,14 @@ else
           protocol: TCP" > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml'
 fi
 
+echo_to_console ">>>> Creating GHCR Login Secret"
+kubectl create ns rho
+kubectl -n rho create secret docker-registry ghcr-login-secret \
+--docker-server=https://ghcr.io \
+--docker-username=automation \
+--docker-password=$RHO_GHCR_KEY \
+--docker-email=automation@16bit.ai
+
 if which brew; then
     echo_to_console ">>>> Homebrew is already installed" 
 else
