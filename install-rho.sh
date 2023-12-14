@@ -63,7 +63,7 @@ if kubectl -n rho get secret "ghcr-login-secret"; then
   echo_to_console ">>>> GHCR Login Secret already exists" 
 else
   echo_to_console ">>>> Creating GHCR Login Secret" 
-	kubectl create ns rho
+  kubectl create ns rho
   kubectl -n rho create secret docker-registry ghcr-login-secret \
   --docker-server=https://ghcr.io \
   --docker-username=automation \
