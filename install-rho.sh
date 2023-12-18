@@ -133,6 +133,7 @@ echo_to_console
 echo_to_console ">>>> Once done, press enter to continue" 
 read
 
+sleep 5
 if argocd repo list -o url | grep -q "git@github.com:16-Bit-Inc/rho-customer-$RHO_CUSTOMER_NAME.git"; then
   echo_to_console ">>>> rho-customer-config repo already exists in ArgoCD" 
 else
