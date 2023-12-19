@@ -37,26 +37,26 @@ else
   source ~/.bashrc
   sleep 5
   sudo sh -c 'echo "apiVersion: helm.cattle.io/v1
-  kind: HelmChartConfig
-  metadata:
-    name: traefik
-    namespace: kube-system
-  spec:
-    valuesContent: |-
-      providers:
-        kubernetesCRD:
-          allowCrossNamespace: true
-      ports:
-        dicom:
-          port: 4242
-          expose: true
-          exposedPort: 4242
-          protocol: TCP
-        db:
-          port: 5432
-          expose: true
-          exposedPort: 5432
-          protocol: TCP" > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml'
+kind: HelmChartConfig
+metadata:
+	name: traefik
+	namespace: kube-system
+spec:
+	valuesContent: |-
+		providers:
+			kubernetesCRD:
+				allowCrossNamespace: true
+		ports:
+			dicom:
+				port: 4242
+				expose: true
+				exposedPort: 4242
+				protocol: TCP
+			db:
+				port: 5432
+				expose: true
+				exposedPort: 5432
+				protocol: TCP" > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml'
 fi
 
 if kubectl -n rho get secret "ghcr-login-secret"; then
