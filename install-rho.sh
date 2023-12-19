@@ -39,24 +39,24 @@ else
   sudo sh -c 'echo "apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
-	name: traefik
-	namespace: kube-system
+  name: traefik
+  namespace: kube-system
 spec:
-	valuesContent: |-
-		providers:
-			kubernetesCRD:
-				allowCrossNamespace: true
-		ports:
-			dicom:
-				port: 4242
-				expose: true
-				exposedPort: 4242
-				protocol: TCP
-			db:
-				port: 5432
-				expose: true
-				exposedPort: 5432
-				protocol: TCP" > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml'
+  valuesContent: |-
+    providers:
+      kubernetesCRD:
+        allowCrossNamespace: true
+    ports:
+      dicom:
+        port: 4242
+        expose: true
+        exposedPort: 4242
+        protocol: TCP
+      db:
+        port: 5432
+        expose: true
+        exposedPort: 5432
+        protocol: TCP" > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml'
 fi
 
 if kubectl -n rho get secret "ghcr-login-secret"; then
@@ -74,10 +74,10 @@ fi
 if which brew; then
     echo_to_console ">>>> Homebrew is already installed" 
 else
-	echo_to_console ">>>> Installing homebrew" 
-	echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	(echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> ~/.bashrc
-	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  echo_to_console ">>>> Installing homebrew" 
+  echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  (echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> ~/.bashrc
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
 
 set +e
@@ -137,15 +137,15 @@ sleep 5
 if argocd repo list -o url | grep -q "git@github.com:16-Bit-Inc/rho-customer-$RHO_CUSTOMER_NAME.git"; then
   echo_to_console ">>>> rho-customer-config repo already exists in ArgoCD" 
 else
-	echo_to_console ">>>> Adding rho-customer-config repo to ArgoCD" 
-	argocd repo add git@github.com:16-Bit-Inc/rho-customer-$RHO_CUSTOMER_NAME.git --name rho-customer-config --ssh-private-key-path ~/.ssh/argocd
+  echo_to_console ">>>> Adding rho-customer-config repo to ArgoCD" 
+  argocd repo add git@github.com:16-Bit-Inc/rho-customer-$RHO_CUSTOMER_NAME.git --name rho-customer-config --ssh-private-key-path ~/.ssh/argocd
 fi
 
 if argocd repo list -o url | grep -q "ghcr.io/16-bit-inc/helm"; then
   echo_to_console ">>>> 16Bit Helm repo already exists in ArgoCD" 
 else
-	echo_to_console ">>>> Adding 16Bit Helm repo to ArgoCD" 
-	argocd repo add "ghcr.io/16-bit-inc/helm" --type helm --name 16bit-helm --enable-oci --username "automation" --password $RHO_GHCR_KEY
+  echo_to_console ">>>> Adding 16Bit Helm repo to ArgoCD" 
+  argocd repo add "ghcr.io/16-bit-inc/helm" --type helm --name 16bit-helm --enable-oci --username "automation" --password $RHO_GHCR_KEY
 fi
 
 if argocd app list -o name | grep -q "argocd/$RHO_CUSTOMER_NAME"; then
