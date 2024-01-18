@@ -111,7 +111,12 @@ else
   echo_to_console ">>>> Installing ArgoCD agent" 
   helm repo add argo https://argoproj.github.io/argo-helm
   helm repo update
-  helm install argocd --namespace argocd --create-namespace --version 5.46.8 argo/argo-cd
+  helm install argocd --namespace argocd --create-namespace --version 5.46.8 argo/argo-cd \
+  --set dex.enabled=false \
+  --set controller.metrics.enabled=true \
+  --set controller.metrics.service.annotations.k8s.grafana.com/scrape="true" \
+  --set controller.metrics.service.annotations.k8s.grafana.com/metrics.portNumber="8082" \
+  --set notifications.enabled=false
 fi
 
 echo_to_console ">>>> Setting up ArgoCD CLI" 
