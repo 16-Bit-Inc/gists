@@ -10,6 +10,33 @@ echo_to_console() {
     echo "$@" | tee -a "$log_path" >&3
 }
 
+# Minimum required RAM in MB
+MIN_RAM_MB=8000
+# Minimum required free disk space in GB
+MIN_DISK_GB=100
+
+# Calculate minimum required free disk space in 1K blocks, since `df` outputs in 1K blocks
+MIN_DISK_BLOCKS=$((MIN_DISK_GB * 1024 * 1024))
+
+# Check RAM
+total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+total_ram_mb=$((total_ram_kb / 1024))
+
+if [ "$total_ram_mb" -lt "$MIN_RAM_MB" ]; then
+    echo_to_console ">>>> Insufficient RAM. Required: ${MIN_RAM_MB} MB, Available: ${total_ram_mb} MB."
+    exit 1
+fi
+
+# Check disk space
+free_disk_space_kb=$(df / | grep / | awk '{print $4}')
+free_disk_space_gb=$((free_disk_space_kb / 1024 / 1024))
+
+if [ "$free_disk_space_gb" -lt "$MIN_DISK_GB" ]; then
+    echo_to_console ">>>> Insufficient disk space. Required: ${MIN_DISK_GB} GB, Available: ${free_disk_space_gb} GB."
+    exit 1
+fi
+
+echo_to_console ">>>> System meets the minimum requirements."
 echo_to_console ">>>> Starting Rho installation"
 echo_to_console ">>>> Logging Rho installation at $log_path"
 
