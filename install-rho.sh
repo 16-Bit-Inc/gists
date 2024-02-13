@@ -10,6 +10,14 @@ echo_to_console() {
     echo "$@" | tee -a "$log_path" >&3
 }
 
+# Function to check if a binary is installed
+check_binary() {
+  if ! which $1 > /dev/null; then
+    echo_to_console "$1 is not installed. Install $1 to proceed."
+    exit 1
+  fi
+}
+
 # Minimum required RAM in MB
 MIN_RAM_MB=7500
 # Minimum required free disk space in GB
@@ -37,6 +45,10 @@ if [ "$free_disk_space_gb" -lt "$MIN_DISK_GB" ]; then
 fi
 
 echo_to_console ">>>> System meets the minimum requirements."
+
+check_binary git
+echo_to_console ">>>> Required binaries are present."
+
 echo_to_console ">>>> Starting Rho installation"
 echo_to_console ">>>> Logging Rho installation at $log_path"
 
