@@ -11,7 +11,7 @@ echo_to_console() {
 }
 
 # Minimum required RAM in MB
-MIN_RAM_MB=8000
+MIN_RAM_MB=7500
 # Minimum required free disk space in GB
 MIN_DISK_GB=100
 
