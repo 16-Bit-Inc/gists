@@ -3,6 +3,7 @@ from PIL import Image
 from datetime import datetime
 import calendar
 
+
 class Dicom2Tiff:
     def __init__(self, dicom_path: str, tiff_path: str):
         self.dicom_path = dicom_path
@@ -61,7 +62,7 @@ class Dicom2Tiff:
         image = Image.open(self.tiff_path)
 
         # To set photometric interpretation as RGB
-        image.tag[65286] = "Report" 
+        image.tag[65286] = "Report"
 
         for tiff_tag, dicom_tag in self.tags_map.items():
 
