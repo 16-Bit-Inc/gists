@@ -1,0 +1,6 @@
+blinker==1.4
+certifi==2024.2.2
+numpy==1.26.4
+pillow==10.2.0
+pydicom==2.4.4
+requests==2.31.0
