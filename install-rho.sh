@@ -21,7 +21,7 @@ check_binary() {
 # Minimum required RAM in MB
 MIN_RAM_MB=7500
 # Minimum required free disk space in GB
-MIN_DISK_GB=100
+MIN_DISK_GB=80
 
 # Calculate minimum required free disk space in 1K blocks, since `df` outputs in 1K blocks
 MIN_DISK_BLOCKS=$((MIN_DISK_GB * 1024 * 1024))
