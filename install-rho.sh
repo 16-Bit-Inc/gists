@@ -226,6 +226,8 @@ EOF
   kubectl apply -f /tmp/rho.yaml
 fi
 
+kubens rho
+
 echo_to_console ">>>> Rho installation complete!"
 echo_to_console
 echo_to_console ">>>> Note: Please source the bashrc file: source ~/.bashrc" 
