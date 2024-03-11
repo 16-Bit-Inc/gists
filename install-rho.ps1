@@ -432,6 +432,8 @@ Write-Host "ArgoCD application created at: $TempFilePath" -ForegroundColor Cyan
 
 kubectl apply -f .\$TempFilePath
 
+kubens rho
+
 Write-Host "Rho installation complete!" -ForegroundColor Green
 Write-Host
 Write-Host "Note: Rho could take up to 10 more minutes to fully install (all the pods to become ready)." -ForegroundColor Yellow
