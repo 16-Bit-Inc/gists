@@ -74,7 +74,7 @@ else
   sudo chown -R $USER:$USER ~/.kube
   echo 'alias k=kubectl' >> ~/.bashrc
   source ~/.bashrc
-  sleep 5
+  sleep 30
   sudo sh -c 'echo "apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
