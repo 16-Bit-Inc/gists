@@ -95,7 +95,7 @@ spec:
         port: 5432
         expose: true
         exposedPort: 5432
-        protocol: TCP" > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml'
+        protocol: TCP" > /mnt/rho/server/manifests/traefik-config.yaml'
 fi
 
 if kubectl -n rho get secret "ghcr-login-secret"; then
