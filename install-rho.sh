@@ -26,14 +26,14 @@ MIN_DISK_GB=80
 # Calculate minimum required free disk space in 1K blocks, since `df` outputs in 1K blocks
 MIN_DISK_BLOCKS=$((MIN_DISK_GB * 1024 * 1024))
 
-# # Check RAM
-# total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-# total_ram_mb=$((total_ram_kb / 1024))
+# Check RAM
+total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+total_ram_mb=$((total_ram_kb / 1024))
 
-# if [ "$total_ram_mb" -lt "$MIN_RAM_MB" ]; then
-#     echo_to_console ">>>> Insufficient RAM. Required: ${MIN_RAM_MB} MB, Available: ${total_ram_mb} MB."
-#     exit 1
-# fi
+if [ "$total_ram_mb" -lt "$MIN_RAM_MB" ]; then
+    echo_to_console ">>>> Insufficient RAM. Required: ${MIN_RAM_MB} MB, Available: ${total_ram_mb} MB."
+    exit 1
+fi
 
 # Check disk space
 free_disk_space_kb=$(df / | grep / | awk '{print $4}')
