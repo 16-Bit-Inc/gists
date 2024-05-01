@@ -142,6 +142,13 @@ else
   brew install helm
 fi
 
+if which jq; then
+  echo_to_console ">>>> jq is already installed" 
+else
+  echo_to_console ">>>> Installing jq" 
+  brew install jq
+fi
+
 set -e
 
 if helm ls --short | grep -q "argocd"; then
@@ -156,7 +163,6 @@ else
   --set controller.metrics.enabled=true \
   --set controller.metrics.service.annotations."k8s\.grafana\.com/scrape"=true \
   --set controller.metrics.service.annotations."k8s\.grafana\.com/metrics\.portNumber"=8082
-  
 fi
 
 echo_to_console ">>>> Setting up ArgoCD CLI" 
@@ -226,8 +232,32 @@ EOF
   kubectl apply -f /tmp/rho.yaml
 fi
 
+device=$(argocd app get argocd/rho -o json | jq -r .spec.source.helm.valuesObject.device)
+if [ "$device" = "gpu" ]; then
+    echo_to_console ">>>> Device is set to GPU"
+    echo_to_console ">>>> Installing Nvidia Operator..."
+
+    helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+    helm repo update
+
+    helm install --wait nvidiagpu \
+    -n gpu-operator --create-namespace \
+    --set toolkit.env[0].name=CONTAINERD_CONFIG \
+    --set toolkit.env[0].value=/var/lib/rancher/k3s/agent/etc/containerd/config.toml \
+    --set toolkit.env[1].name=CONTAINERD_SOCKET \
+    --set toolkit.env[1].value=/run/k3s/containerd/containerd.sock \
+    --set toolkit.env[2].name=CONTAINERD_RUNTIME_CLASS \
+    --set toolkit.env[2].value=nvidia \
+    --set toolkit.env[3].name=CONTAINERD_SET_AS_DEFAULT \
+    --set-string toolkit.env[3].value=true \
+    nvidia/gpu-operator
+
+    echo_to_console ">>>> Trition Server pod might crash a few times for the first ~10 minutes until the GPU is detected by the Nvidia Operator."
+fi
+
 kubens rho
 
+echo_to_console
 echo_to_console ">>>> Rho installation complete!"
 echo_to_console
 echo_to_console ">>>> Note: Please source the bashrc file: source ~/.bashrc" 
