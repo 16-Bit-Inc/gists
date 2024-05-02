@@ -35,9 +35,18 @@ if [ "$total_ram_gb" -lt "$min_ram" ]; then
 fi
 
 data_dir="/var/lib/rancher/k3s"
+mountpoint="/var/lib"
 if [ -n "$DATA_DIR" ]; then
+
+    if [ ! -d "$DATA_DIR" ]; then
+        echo_to_console "DATA_DIR ${DATA_DIR} does not exist. Please provide an existing directory."
+        exit 1
+    fi
+
     echo_to_console ">>>> Using $DATA_DIR as the data directory for K3s"
     data_dir="$DATA_DIR"
+    mountpoint=$(df --output=target $data_dir | tail -n 1 | awk '{print $1}')
+    echo_to_console ">>>> Using ${mountpoint} as the mount point for data directory ${data_dir}"
 fi
 
 # Minimum required free disk space in GB
@@ -48,7 +57,6 @@ if [ -n "$MIN_DISK" ]; then
 fi
 
 # Check free disk space
-mountpoint=$(df --output=target $data_dir | tail -n 1 | awk '{print $1}')
 free_disk_space_kb=$(df $mountpoint | grep $mountpoint | awk '{print $4}')
 free_disk_space_gb=$((free_disk_space_kb / 1024 / 1024))
 
