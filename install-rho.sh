@@ -53,7 +53,7 @@ free_disk_space_kb=$(df $mountpoint | grep $mountpoint | awk '{print $4}')
 free_disk_space_gb=$((free_disk_space_kb / 1024 / 1024))
 
 if [ "$free_disk_space_gb" -lt "$min_disk" ]; then
-    echo_to_console ">>>> Insufficient disk space in $mountpoint (required: ${min_disk} GB, available: ${free_disk_space_gb} GB)"
+    echo_to_console ">>>> Insufficient disk space in ${mountpoint} (required: ${min_disk} GB, available: ${free_disk_space_gb} GB)"
     exit 1
 fi
 
