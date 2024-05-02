@@ -91,7 +91,8 @@ else
     --write-kubeconfig ~/.kube/config \
     --write-kubeconfig-mode 600 \
     --kubelet-arg=image-gc-high-threshold=50 \
-    --kubelet-arg=image-gc-low-threshold=30
+    --kubelet-arg=image-gc-low-threshold=30 \
+    --data-dir $data_dir
   sudo chown -R $USER:$USER ~/.kube
   echo 'alias k=kubectl' >> ~/.bashrc
   source ~/.bashrc
