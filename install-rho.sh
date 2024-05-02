@@ -18,29 +18,50 @@ check_binary() {
   fi
 }
 
-# Minimum required RAM in MB
-MIN_RAM_MB=7500
-# Minimum required free disk space in GB
-MIN_DISK_GB=80
-
-# Calculate minimum required free disk space in 1K blocks, since `df` outputs in 1K blocks
-MIN_DISK_BLOCKS=$((MIN_DISK_GB * 1024 * 1024))
+# Minimum required RAM in GB
+min_ram=7
+if [ -n "$MIN_RAM" ]; then
+    echo_to_console ">>>> Using $MIN_RAM as the minimum RAM requirement."
+    min_ram="$MIN_RAM"
+fi
 
 # Check RAM
 total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-total_ram_mb=$((total_ram_kb / 1024))
+total_ram_gb=$((total_ram_kb / 1024 / 1024))
 
-if [ "$total_ram_mb" -lt "$MIN_RAM_MB" ]; then
-    echo_to_console ">>>> Insufficient RAM. Required: ${MIN_RAM_MB} MB, Available: ${total_ram_mb} MB."
+if [ "$total_ram_gb" -lt "$min_ram" ]; then
+    echo_to_console ">>>> Insufficient RAM (required: ${min_ram} GB, available: ${total_ram_gb} GB)"
     exit 1
 fi
 
-# Check disk space
-free_disk_space_kb=$(df / | grep / | awk '{print $4}')
+data_dir="/var/lib/rancher/k3s"
+mountpoint="/"
+if [ -n "$DATA_DIR" ]; then
+
+    if [ ! -d "$DATA_DIR" ]; then
+        echo_to_console "DATA_DIR ${DATA_DIR} does not exist. Please provide an existing directory."
+        exit 1
+    fi
+
+    echo_to_console ">>>> Using $DATA_DIR as the data directory for K3s"
+    data_dir="$DATA_DIR"
+    mountpoint=$(df --output=target $data_dir | tail -n 1 | awk '{print $1}')
+    echo_to_console ">>>> Using ${mountpoint} as the mount point for data directory ${data_dir}"
+fi
+
+# Minimum required free disk space in GB
+min_disk=80
+if [ -n "$MIN_DISK" ]; then
+    echo_to_console ">>>> Using $MIN_DISK as the minimum free disk space requirement."
+    min_disk="$MIN_DISK"
+fi
+
+# Check free disk space
+free_disk_space_kb=$(df $mountpoint | grep $mountpoint | awk '{print $4}')
 free_disk_space_gb=$((free_disk_space_kb / 1024 / 1024))
 
-if [ "$free_disk_space_gb" -lt "$MIN_DISK_GB" ]; then
-    echo_to_console ">>>> Insufficient disk space. Required: ${MIN_DISK_GB} GB, Available: ${free_disk_space_gb} GB."
+if [ "$free_disk_space_gb" -lt "$min_disk" ]; then
+    echo_to_console ">>>> Insufficient disk space in ${mountpoint} (required: ${min_disk} GB, available: ${free_disk_space_gb} GB)"
     exit 1
 fi
 
@@ -70,12 +91,13 @@ else
     --write-kubeconfig ~/.kube/config \
     --write-kubeconfig-mode 600 \
     --kubelet-arg=image-gc-high-threshold=50 \
-    --kubelet-arg=image-gc-low-threshold=30
+    --kubelet-arg=image-gc-low-threshold=30 \
+    --data-dir $data_dir
   sudo chown -R $USER:$USER ~/.kube
   echo 'alias k=kubectl' >> ~/.bashrc
   source ~/.bashrc
   sleep 5
-  sudo sh -c 'echo "apiVersion: helm.cattle.io/v1
+  sudo sh -c "echo 'apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
   name: traefik
@@ -95,7 +117,7 @@ spec:
         port: 5432
         expose: true
         exposedPort: 5432
-        protocol: TCP" > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml'
+        protocol: TCP' > $data_dir/server/manifests/traefik-config.yaml"
 fi
 
 if kubectl -n rho get secret "ghcr-login-secret"; then
@@ -246,7 +268,7 @@ if [ "$device" = "gpu" ]; then
     helm install --wait nvidiagpu \
     -n gpu-operator --create-namespace \
     --set toolkit.env[0].name=CONTAINERD_CONFIG \
-    --set toolkit.env[0].value=/var/lib/rancher/k3s/agent/etc/containerd/config.toml \
+    --set toolkit.env[0].value=$data_dir/agent/etc/containerd/config.toml \
     --set toolkit.env[1].name=CONTAINERD_SOCKET \
     --set toolkit.env[1].value=/run/k3s/containerd/containerd.sock \
     --set toolkit.env[2].name=CONTAINERD_RUNTIME_CLASS \
