@@ -232,6 +232,9 @@ EOF
   kubectl apply -f /tmp/rho.yaml
 fi
 
+echo_to_console ">>>> Checking device type..."
+sleep 30
+
 device=$(argocd app get argocd/rho -o json | jq -r .spec.source.helm.valuesObject.device)
 if [ "$device" = "gpu" ]; then
     echo_to_console ">>>> Device is set to GPU"
