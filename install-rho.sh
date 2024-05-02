@@ -35,7 +35,7 @@ if [ "$total_ram_gb" -lt "$min_ram" ]; then
 fi
 
 data_dir="/var/lib/rancher/k3s"
-mountpoint="/var/lib"
+mountpoint="/"
 if [ -n "$DATA_DIR" ]; then
 
     if [ ! -d "$DATA_DIR" ]; then
