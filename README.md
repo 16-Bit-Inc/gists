@@ -19,3 +19,5 @@ bash <(curl -fsSL https://raw.githubusercontent.com/16-Bit-Inc/gists/main/instal
 
 - Use the `DATA_DIR` option when the customer wants to install Rho at a different location.
 - The `MIN_DISK` and `MIN_RAM` values are in GBs.
+
+> NOTE: One drawback of using the `DATA_DIR` command is that `k3s-uninstall.sh` doesn't clear up the `DATA_DIR`. You will need to do that manually if you are trying to do an install.
