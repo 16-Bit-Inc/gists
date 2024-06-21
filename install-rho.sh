@@ -206,7 +206,21 @@ echo_to_console
 echo_to_console ">>>> Once done, press enter to continue" 
 read
 
-sleep 5
+sleep 8
+
+while true; do
+deployments_not_ready=$(kubectl -n argocd get deploy -o custom-columns='DEPLOY:metadata.name,READY:status.readyReplicas' | grep '<none>' | wc -l)
+if [ $deployments_not_ready -ne 0 ];then
+    echo_to_console ">>>> ArgoCD deployments are not ready waiting..."
+    sleep 10
+else
+    sleep 2
+    echo_to_console ">>>> ArgoCD deployments ready, proceeding with configuring the rho-customer-config and helm repo"
+    echo_to_console
+    break
+fi
+done
+
 if argocd repo list -o url | grep -q "git@github.com:16-Bit-Inc/rho-customer-$RHO_CUSTOMER_NAME.git"; then
   echo_to_console ">>>> rho-customer-config repo already exists in ArgoCD" 
 else
