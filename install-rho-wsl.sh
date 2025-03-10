@@ -2,28 +2,6 @@
 set -euo pipefail
 
 ###############################################################################
-# Pre-check: Install Homebrew and kubectx (for kubens) if not already installed
-###############################################################################
-if ! command -v kubens &>/dev/null; then
-  echo "kubens not found. Attempting to install via Homebrew..."
-
-  if ! command -v brew &>/dev/null; then
-    echo "Homebrew not found. Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    # Add brew to PATH for the current user
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.profile
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-  fi
-
-  echo "Installing kubectx (provides kubens) via Homebrew..."
-  brew install kubectx
-fi
-
-echo "kubens is installed at: $(which kubens)"
-kubens -h >/dev/null && echo "kubens help OK"
-echo ""
-
-###############################################################################
 # 1. Parse CLI arguments (simple approach)
 ###############################################################################
 ip=""
