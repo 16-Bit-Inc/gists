@@ -2,74 +2,7 @@
 set -euo pipefail
 
 ###############################################################################
-# Pre-installation Setup for WSL2 + MicroK8s
-###############################################################################
-echo "== Pre-installation Setup =="
-
-# Install snapd if not installed
-if ! command -v snap &>/dev/null; then
-  echo "snap not found; installing snapd..."
-  sudo apt-get update && sudo apt-get install -y snapd
-fi
-
-# Install MicroK8s via snap if not installed
-if ! snap list | grep -q microk8s; then
-  echo "microk8s not found; installing microk8s..."
-  sudo snap install microk8s --classic
-fi
-
-echo "Waiting for MicroK8s to be ready..."
-microk8s status --wait-ready
-
-# Enable necessary MicroK8s add-ons: dns, storage, metallb (with your IP range)
-echo "Enabling MicroK8s add-ons (dns, storage, metallb)..."
-microk8s enable dns storage metallb:192.168.0.100-192.168.0.150
-
-# Disable the default MicroK8s ingress (NGINX) so we use Traefik exclusively
-echo "Disabling MicroK8s default ingress..."
-microk8s disable ingress
-
-# Export kubectl config from MicroK8s
-echo "Configuring kubectl..."
-microk8s config > ~/.kube/config
-
-# Install net-tools if missing (for tools like netstat)
-if ! command -v netstat &>/dev/null; then
-  sudo apt-get install -y net-tools
-fi
-
-# Create aliases for kubectl and kubens if not already in PATH
-if ! command -v kubectl &>/dev/null; then
-  echo "Aliasing microk8s kubectl to kubectl..."
-  sudo snap alias microk8s.kubectl kubectl
-fi
-if ! command -v kubens &>/dev/null; then
-  echo "Aliasing microk8s kubens to kubens..."
-  sudo snap alias microk8s.kubens kubens
-fi
-
-# Install Argo CD CLI if not already installed
-if ! command -v argocd &>/dev/null; then
-  echo "Installing Argo CD CLI..."
-  curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-  sudo mv argocd-linux-amd64 /usr/local/bin/argocd
-  sudo chmod +x /usr/local/bin/argocd
-fi
-
-# Install kubectx (optional)
-if ! command -v kubectx &>/dev/null; then
-  sudo apt-get install -y kubectx
-fi
-
-# Set environment variables for GUI apps (if you plan to run GUI browsers)
-export LIBGL_ALWAYS_INDIRECT=1
-export DISPLAY=:0
-
-echo "Pre-installation setup complete."
-echo ""
-
-###############################################################################
-# 1. Parse CLI arguments (for install-rho.sh)
+# 1. Parse CLI arguments (simple approach)
 ###############################################################################
 ip=""
 customer_name=""
@@ -116,21 +49,13 @@ echo "All required binaries present."
 echo ""
 
 ###############################################################################
-# 3. Verify MicroK8s is running
+# (User must set up and start MicroK8s outside this script)
 ###############################################################################
-while true; do
-  if microk8s status --wait-ready &>/dev/null; then
-    echo "MicroK8s is running. Continuing..."
-    break
-  else
-    echo "MicroK8s not ready. Please start MicroK8s (e.g. 'microk8s start')."
-    read -r -p "Press Enter once MicroK8s is running. " _
-  fi
-done
+echo "Ensure MicroK8s is installed and running before proceeding."
 echo ""
 
 ###############################################################################
-# 4. Create GHCR login secret in namespace "rho" if missing
+# 4. Create GHCR login secret in namespace 'rho' if missing
 ###############################################################################
 set +e
 kubectl -n rho get secret ghcr-login-secret >/dev/null 2>&1
@@ -345,6 +270,32 @@ fi
 # Delete unwanted CRDs (since you don't need BFD/BGP)
 kubectl delete crd bfdprofiles.metallb.io bgpadvertisements.metallb.io
 kubectl delete crd bgppeers.metallb.io || true
+echo ""
+
+cat <<EOF > metallb-config.yaml
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: metallb-ip-address-pool
+  namespace: metallb
+spec:
+  addresses:
+  - ${ip}/32
+
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: metallb-l2-config
+  namespace: metallb
+spec:
+  ipAddressPools:
+  - metallb-ip-address-pool
+EOF
+
+echo "Applying metallb configuration..."
+kubectl apply -f metallb-config.yaml
 echo ""
 
 ###############################################################################
